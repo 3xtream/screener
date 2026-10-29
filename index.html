@@ -180,7 +180,7 @@ async function analyze(t,raw,cfg){
   const [momOK,momR]=evalMom({rsi:H.rsi[i],mfi:H.mfi[i],vr,c:close,e9:H.e9[i],e20:H.e20[i]},cfg);
   const liqOK=num(av)&&av>=cfg.liq;
   const sig=age>cfg.stale?'DATA_BASI':(fvOK&&momOK&&liqOK)?'LAYAK BELI':'TIDAK LOLOS';
-  return{Ticker:t,Tanggal:date.toISOString().slice(0,10),Close:rnd(close),Market_Cap:f.mcap??null,PE_Hitung:peC,PE_Yahoo:peY,
+  return{Ticker:t,Tanggal:date.toISOString().slice(0,10),Close:rnd(close),Perubahan:rnd(close-H.c[i-1]),'Perubahan_%':rnd((close/H.c[i-1]-1)*100),Market_Cap:f.mcap??null,PE_Hitung:peC,PE_Yahoo:peY,
     Fair_Value:rnd(fv.fv),FV_Min:rnd(fv.min),FV_Max:rnd(fv.max),'Upside_%':fv.fv?rnd((fv.fv-close)/close*100,1):null,Metode_Valid:fv.n,
     Graham:rnd(fv.graham),PE_Relative:rnd(fv.peRel),Justified_PBV:rnd(fv.jp),DDM:rnd(fv.ddm),
     Price_Position:rnd(H.w[i][2]),Vol_Ratio_Wyckoff:rnd(H.w[i][3]),Fase_Wyckoff:H.w[i][0],Interpretasi_Smart_Money:H.w[i][1],MACD:macdTxt,MACD_GC:gcOK,RSI_14:rnd(H.rsi[i]),MFI_14:rnd(H.mfi[i]),Volume_Ratio:rnd(vr),Avg_Value_20:Math.round(av),
@@ -210,7 +210,7 @@ async function run(){
     $('prog').value=i+b.length;render()}
   $('st').textContent=`Selesai: ${T.length} ticker.`;$('prog').hidden=true;$('run').disabled=false;render()}
 
-const COLS=[['Ticker','Ticker'],['Sinyal_Akhir','Sinyal'],['Close','Close'],['Market_Cap','Market Cap'],['Fair_Value','Fair Value'],['Upside_%','Upside %'],['Fase_Wyckoff','Fase Wyckoff'],['Price_Position','Price Pos. (20h)'],['MACD','MACD'],
+const COLS=[['Ticker','Ticker'],['Sinyal_Akhir','Sinyal'],['Close','Close'],['Perubahan_%','Δ vs kemarin'],['Market_Cap','Market Cap'],['Fair_Value','Fair Value'],['Upside_%','Upside %'],['Fase_Wyckoff','Fase Wyckoff'],['Price_Position','Price Pos. (20h)'],['MACD','MACD'],
   ['Alasan_Fair_Value','Alasan Fair Value'],['Alasan_Momentum','Alasan Momentum']];
 function capFmt(v,m){if(!num(v))return'N/A';const s=PRE[m].sym;
   if(v>=1e12)return`${s}${(v/1e12).toFixed(2)} T`;if(v>=1e9)return`${s}${(v/1e9).toFixed(2)} ${m==='idx'?'M':'B'}`;
@@ -224,7 +224,7 @@ function render(){
   $('sum').innerHTML=Object.keys(PRI).map(k=>`${k}: <b>${c[k]||0}</b>`).join(' · ');
   $('th').innerHTML='<tr>'+COLS.map(([k,l])=>`<th data-k="${k}">${l}</th>`).join('')+'</tr>';
   $('tb').innerHTML=v.map(r=>{const s=r.Sinyal_Akhir,cl=s==='LAYAK BELI'?'L':s==='TIDAK LOLOS'?'T':'X';
-    return`<tr class="r" data-t="${r.Ticker}"><td>${r.Ticker}</td><td class="s-${cl}">${s}</td><td class="n">${r.Close??''}</td><td class="n">${capFmt(r.Market_Cap,m)}</td>
+    return`<tr class="r" data-t="${r.Ticker}"><td>${r.Ticker}</td><td class="s-${cl}">${s}</td><td class="n">${r.Close??''}</td>${num(r['Perubahan_%'])?`<td class="n s-${r['Perubahan_%']>=0?'L':'T'}" title="${r.Perubahan>0?'+':''}${r.Perubahan}">${r['Perubahan_%']>0?'+':''}${r['Perubahan_%']}%</td>`:'<td></td>'}<td class="n">${capFmt(r.Market_Cap,m)}</td>
     <td class="n">${r.Fair_Value??''}</td><td class="n">${num(r['Upside_%'])?r['Upside_%']+'%':''}</td><td class="w" title="${r.Interpretasi_Smart_Money||''}">${r.Fase_Wyckoff||''}</td><td class="n">${r.Price_Position??''}</td><td>${r.MACD||''}</td><td class="w">${r.Alasan_Fair_Value||''}</td><td class="w">${r.Alasan_Momentum||''}</td></tr>`}).join('')}
 
 function line(cv,series,hl=[],mk=[]){const dpr=devicePixelRatio||1,W=cv.clientWidth,Hh=cv.clientHeight;cv.width=W*dpr;cv.height=Hh*dpr;
@@ -239,7 +239,7 @@ function line(cv,series,hl=[],mk=[]){const dpr=devicePixelRatio||1,W=cv.clientWi
     if(m.s==='u'){x.moveTo(px,py-9);x.lineTo(px-5,py+1);x.lineTo(px+5,py+1)}else if(m.s==='d'){x.moveTo(px,py+9);x.lineTo(px-5,py-1);x.lineTo(px+5,py-1)}else x.arc(px,py,3.5,0,7);x.fill()})}
 function detail(t){const r=rows.find(x=>x.Ticker===t),H=hists[t];if(!r||!H)return;
   $('det').hidden=false;$('dt').textContent=`${t} — ${r.Sinyal_Akhir}`;
-  $('dk').innerHTML=[['Close',r.Close],['Fair Value',r.Fair_Value],['Upside',num(r['Upside_%'])?r['Upside_%']+'%':'-'],['Graham',r.Graham],['PE Rel.',r.PE_Relative],['Just. PBV',r.Justified_PBV],['DDM',r.DDM],['RSI/MFI',r.RSI_14+' / '+r.MFI_14],['Vol ratio',r.Volume_Ratio+'x'],['Price Position 20h',r.Price_Position]]
+  $('dk').innerHTML=[['Close',r.Close],['Vs kemarin',num(r['Perubahan_%'])?`${r['Perubahan_%']>0?'+':''}${r['Perubahan_%']}% (${r.Perubahan>0?'+':''}${r.Perubahan})`:'-'],['Fair Value',r.Fair_Value],['Upside',num(r['Upside_%'])?r['Upside_%']+'%':'-'],['Graham',r.Graham],['PE Rel.',r.PE_Relative],['Just. PBV',r.Justified_PBV],['DDM',r.DDM],['RSI/MFI',r.RSI_14+' / '+r.MFI_14],['Vol ratio',r.Volume_Ratio+'x'],['Price Position 20h',r.Price_Position]]
     .map(([a,b])=>`<div><span class="mut">${a}</span><br><b>${b??'-'}</b></div>`).join('');
   $('dr').innerHTML=`<b>Fair value:</b> ${r.Alasan_Fair_Value}<br><b>Momentum:</b> ${r.Alasan_Momentum}<br><b>Smart money (Wyckoff):</b> ${r.Fase_Wyckoff} — ${r.Interpretasi_Smart_Money}<br><b>MACD:</b> ${r.MACD}<br><b>Likuiditas:</b> ${r.Likuiditas_Lolos?'lolos':'tidak lolos'}`;
   const mk1=[];H.w.forEach((w,i)=>{const q=w[0],c=q.startsWith('ACCUM')?'#16a34a':q.startsWith('DISTR')?'#dc2626':q.startsWith('MARK-DOWN')?'#d97706':q.includes('Breakout')?'#1a56db':null;if(c)mk1.push({i,v:H.c[i],c,s:'o'})});
